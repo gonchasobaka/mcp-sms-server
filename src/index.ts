@@ -21,7 +21,7 @@ import {
   getApiKeyByEmail,
 } from "./database";
 
-const MARGIN = parseFloat(process.env.MARGIN_MULTIPLIER || "2");
+const MARGIN = parseFloat(process.env.MARGIN_MULTIPLIER || "1");
 
 // --- Init (providers populated in main()) ---
 getDb();

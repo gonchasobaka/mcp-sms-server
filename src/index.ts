@@ -18,6 +18,7 @@ import {
   getActiveNumber,
   removeActiveNumber,
   getDb,
+  getApiKeyByEmail,
 } from "./database";
 
 const MARGIN = parseFloat(process.env.MARGIN_MULTIPLIER || "2");
@@ -426,6 +427,22 @@ function createExpressApp() {
       pay_url: result.pay_url,
       invoice_id: result.invoice_id,
     });
+  });
+
+  // --- GET /get-key ---
+  app.get("/get-key", (req, res) => {
+    const email = req.query.email as string | undefined;
+    if (!email) {
+      res.status(400).json({ error: "Missing email" });
+      return;
+    }
+    const apiKey = getApiKeyByEmail(email.toLowerCase().trim());
+    if (!apiKey) {
+      res.status(404).json({ error: "No account found for this email" });
+      return;
+    }
+    const balance = getBalance(apiKey);
+    res.json({ api_key: apiKey, balance_usd: balance });
   });
 
   // --- GET /balance ---

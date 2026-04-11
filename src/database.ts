@@ -24,9 +24,11 @@ function initSchema(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       api_key TEXT PRIMARY KEY,
+      email TEXT,
       balance_usd REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,12 +110,21 @@ export function addBalance(apiKey: string, amount: number, description: string):
   })();
 }
 
-export function createUser(apiKey: string, initialBalance: number = 0): void {
+export function createUser(apiKey: string, initialBalance: number = 0, email?: string): void {
   const db = getDb();
-  db.prepare("INSERT OR IGNORE INTO users (api_key, balance_usd) VALUES (?, ?)").run(
+  db.prepare("INSERT OR IGNORE INTO users (api_key, email, balance_usd) VALUES (?, ?, ?)").run(
     apiKey,
+    email || null,
     initialBalance
   );
+}
+
+export function getApiKeyByEmail(email: string): string | undefined {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT api_key FROM users WHERE email = ? ORDER BY created_at DESC LIMIT 1")
+    .get(email) as { api_key: string } | undefined;
+  return row?.api_key;
 }
 
 export function saveActiveNumber(

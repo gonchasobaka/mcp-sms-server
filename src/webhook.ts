@@ -37,6 +37,7 @@ export async function createCryptoBotInvoice(
       amount: amount.toFixed(2),
       description: `MCP SMS Server — $${amount.toFixed(2)} balance top-up`,
       payload: JSON.stringify({ email, amount }),
+      return_url: `${process.env.LANDING_URL || "https://mcp-sms-nu.vercel.app"}/#paid`,
       expires_in: 3600,
     }),
   });
@@ -122,7 +123,7 @@ export async function handleCryptoBotWebhook(
 
   // Create user with API key
   const apiKey = `sk-sms-${uuidv4()}`;
-  createUser(apiKey, balance);
+  createUser(apiKey, balance, email);
 
   console.error(`[webhook] New user: ${email}, balance: $${balance}, key: ${apiKey.slice(0, 12)}...`);
 

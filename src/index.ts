@@ -27,30 +27,20 @@ const MARGIN = parseFloat(process.env.MARGIN_MULTIPLIER || "1");
 getDb();
 let providers: SmsProvider[] = [];
 
-const server = new McpServer({
-  name: "mcp-sms-server",
-  version: "1.0.0",
-});
-
-// --- Helper: extract API key from request context ---
-// MCP doesn't natively pass HTTP headers through tool calls,
-// so we accept api_key as a required parameter on each tool.
-
 function assertAuth(apiKey: string): void {
-  const { valid, balance } = validateApiKey(apiKey);
-  if (!valid) {
-    throw new Error("Invalid API key. Register first or check your key.");
-  }
+  const { valid } = validateApiKey(apiKey);
+  if (!valid) throw new Error("Invalid API key. Register first or check your key.");
 }
 
 function assertBalance(apiKey: string, required: number): void {
   const balance = getBalance(apiKey);
   if (balance < required) {
-    throw new Error(
-      `Insufficient balance. Required: $${required.toFixed(4)}, available: $${balance.toFixed(4)}`
-    );
+    throw new Error(`Insufficient balance. Required: $${required.toFixed(4)}, available: $${balance.toFixed(4)}`);
   }
 }
+
+function createMcpServer(): McpServer {
+  const server = new McpServer({ name: "mcp-sms-server", version: "1.0.0" });
 
 // ==========================================================
 // Tool: buy_number
@@ -350,6 +340,9 @@ server.tool(
   }
 );
 
+  return server;
+}
+
 // ==========================================================
 // Start server
 // ==========================================================
@@ -461,13 +454,20 @@ function createExpressApp() {
     res.json({ balance_usd: balance });
   });
 
-  // --- MCP SSE transport ---
+  // --- MCP SSE transport (new server per connection) ---
   const sseTransports = new Map<string, SSEServerTransport>();
 
   app.get("/sse", async (req, res) => {
-    const transport = new SSEServerTransport("/messages", res);
-    sseTransports.set(transport.sessionId, transport);
-    await server.connect(transport);
+    try {
+      const transport = new SSEServerTransport("/messages", res);
+      sseTransports.set(transport.sessionId, transport);
+      const mcpServer = createMcpServer();
+      await mcpServer.connect(transport);
+      transport.onclose = () => sseTransports.delete(transport.sessionId);
+    } catch (err: any) {
+      console.error("[sse] Error:", err.message);
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    }
   });
 
   app.post("/messages", async (req, res) => {
@@ -499,7 +499,7 @@ async function main() {
   } else {
     // stdio mode for local MCP usage
     const transport = new StdioServerTransport();
-    await server.connect(transport);
+    await createMcpServer().connect(transport);
     console.error("MCP SMS Server started (stdio mode)");
     console.error(`Providers: ${providers.map((p) => p.name).join(", ")}`);
   }

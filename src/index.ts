@@ -353,20 +353,20 @@ server.tool(
 // Start server
 // ==========================================================
 
-import { handleLemonWebhook } from "./webhook";
+import { createCryptoBotInvoice, handleCryptoBotWebhook } from "./webhook";
 
 function createExpressApp() {
   const app = express();
 
   // --- Webhook needs raw body for signature verification ---
   app.post(
-    "/webhook/lemonsqueezy",
+    "/webhook/cryptobot",
     express.raw({ type: "application/json" }),
     async (req, res) => {
       try {
         const rawBody = req.body.toString("utf-8");
-        const signature = req.headers["x-signature"] as string | undefined;
-        const result = await handleLemonWebhook(rawBody, signature);
+        const signature = req.headers["crypto-pay-api-signature"] as string | undefined;
+        const result = await handleCryptoBotWebhook(rawBody, signature);
 
         if (!result.success) {
           res.status(400).json({ error: result.error });
@@ -400,6 +400,31 @@ function createExpressApp() {
     res.json({
       status: "ok",
       providers: providers.map((p) => p.name),
+    });
+  });
+
+  // --- POST /create-invoice ---
+  app.post("/create-invoice", async (req, res) => {
+    const { amount, email } = req.body || {};
+
+    if (!amount || !email) {
+      res.status(400).json({ error: "Missing required fields: amount, email" });
+      return;
+    }
+    if (typeof amount !== "number" || amount <= 0) {
+      res.status(400).json({ error: "amount must be a positive number" });
+      return;
+    }
+
+    const result = await createCryptoBotInvoice(amount, email);
+    if (!result.success) {
+      res.status(502).json({ error: result.error });
+      return;
+    }
+
+    res.json({
+      pay_url: result.pay_url,
+      invoice_id: result.invoice_id,
     });
   });
 

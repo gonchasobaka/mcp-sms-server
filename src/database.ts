@@ -29,6 +29,14 @@ function initSchema(db: Database.Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+  `);
+  // migrate: add email column if missing (for existing DBs)
+  const cols = db.pragma("table_info(users)") as { name: string }[];
+  if (!cols.find(c => c.name === "email")) {
+    db.exec("ALTER TABLE users ADD COLUMN email TEXT;");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);");
+  }
+  db.exec(`
 
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

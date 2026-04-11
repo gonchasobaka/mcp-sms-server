@@ -374,9 +374,6 @@ function createExpressApp() {
     }
   );
 
-  // --- JSON parsing for other routes ---
-  app.use(express.json());
-
   // --- CORS ---
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -387,6 +384,12 @@ function createExpressApp() {
       return;
     }
     next();
+  });
+
+  // --- JSON parsing (skip /messages — MCP SDK reads raw stream) ---
+  app.use((req, res, next) => {
+    if (req.path === "/messages") return next();
+    express.json()(req, res, next);
   });
 
   // --- GET /health ---

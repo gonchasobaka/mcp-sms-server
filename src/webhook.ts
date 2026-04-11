@@ -37,7 +37,7 @@ export async function createCryptoBotInvoice(
       amount: amount.toFixed(2),
       description: `MCP SMS Server — $${amount.toFixed(2)} balance top-up`,
       payload: JSON.stringify({ email, amount }),
-      return_url: `${process.env.LANDING_URL || "https://mcp-sms-nu.vercel.app"}/#paid`,
+      return_url: `${process.env.LANDING_URL || "https://mcp-sms-nu.vercel.app"}/?email=${encodeURIComponent(email)}#paid`,
       expires_in: 3600,
     }),
   });

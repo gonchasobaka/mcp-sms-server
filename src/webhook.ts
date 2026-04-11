@@ -4,7 +4,7 @@ import { createUser } from "./database";
 import { sendApiKeyEmail } from "./email";
 
 const CRYPTOBOT_API = process.env.CRYPTOBOT_API_URL || "https://pay.crypt.bot/api";
-const CRYPTOBOT_TOKEN = () => process.env.CRYPTOBOT_API_TOKEN || "";
+const CRYPTOBOT_TOKEN = () => process.env.CRYPTOBOT_API_TOKEN || process.env.CRYPTOBOT_API_KEY || "";
 
 // --- Create Invoice ---
 

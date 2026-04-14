@@ -125,7 +125,7 @@ export async function handleCryptoBotWebhook(
 
   // Create user with API key
   const apiKey = `sk-sms-${uuidv4()}`;
-  createUser(apiKey, balance, email);
+  await createUser(apiKey, balance, email);
 
   console.error(`[webhook] New user: ${email}, balance: $${balance}, key: ${apiKey.slice(0, 12)}...`);
 

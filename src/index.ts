@@ -24,16 +24,15 @@ import {
 const MARGIN = parseFloat(process.env.MARGIN_MULTIPLIER || "1");
 
 // --- Init (providers populated in main()) ---
-getDb();
 let providers: SmsProvider[] = [];
 
-function assertAuth(apiKey: string): void {
-  const { valid } = validateApiKey(apiKey);
+async function assertAuth(apiKey: string): Promise<void> {
+  const { valid } = await validateApiKey(apiKey);
   if (!valid) throw new Error("Invalid API key. Register first or check your key.");
 }
 
-function assertBalance(apiKey: string, required: number): void {
-  const balance = getBalance(apiKey);
+async function assertBalance(apiKey: string, required: number): Promise<void> {
+  const balance = await getBalance(apiKey);
   if (balance < required) {
     throw new Error(`Insufficient balance. Required: $${required.toFixed(4)}, available: $${balance.toFixed(4)}`);
   }
@@ -58,7 +57,7 @@ server.tool(
       .describe("Force specific provider: 5sim, sms-activate, onlinesim"),
   },
   async ({ api_key, service, country, provider: preferredProvider }) => {
-    assertAuth(api_key);
+    await assertAuth(api_key);
 
     // Build ordered list of providers to try
     let candidates: { provider: SmsProvider; price: number }[] = [];
@@ -101,7 +100,7 @@ server.tool(
     for (const { provider: selectedProvider, price: providerCost } of candidates) {
       const userPrice = providerCost * MARGIN;
       try {
-        assertBalance(api_key, userPrice);
+        await assertBalance(api_key, userPrice);
       } catch {
         errors.push(`${selectedProvider.name}: insufficient user balance for $${userPrice.toFixed(4)}`);
         continue;
@@ -112,7 +111,7 @@ server.tool(
         const actualCost = result.cost_usd > 0 ? result.cost_usd : providerCost;
         const finalPrice = actualCost * MARGIN;
 
-        const deducted = deductBalance(
+        const deducted = await deductBalance(
           api_key,
           finalPrice,
           `buy_number: ${service} via ${selectedProvider.name}`
@@ -123,7 +122,7 @@ server.tool(
           continue;
         }
 
-        saveActiveNumber(
+        await saveActiveNumber(
           result.number_id,
           selectedProvider.name,
           api_key,
@@ -177,7 +176,7 @@ server.tool(
     provider: z.string().describe("Provider name from buy_number response"),
   },
   async ({ api_key, number_id, provider: providerName }) => {
-    assertAuth(api_key);
+    await assertAuth(api_key);
 
     const p = getProviderByName(providers, providerName);
     if (!p) {
@@ -216,7 +215,7 @@ server.tool(
     provider: z.string().describe("Provider name"),
   },
   async ({ api_key, number_id, provider: providerName }) => {
-    assertAuth(api_key);
+    await assertAuth(api_key);
 
     const p = getProviderByName(providers, providerName);
     if (!p) {
@@ -233,10 +232,10 @@ server.tool(
     await p.releaseNumber(number_id);
 
     // Refund user
-    const activeNum = getActiveNumber(number_id, providerName);
+    const activeNum = await getActiveNumber(number_id, providerName);
     if (activeNum && activeNum.api_key === api_key) {
-      addBalance(api_key, activeNum.cost_usd, `refund: release ${number_id}`);
-      removeActiveNumber(number_id, providerName);
+      await addBalance(api_key, activeNum.cost_usd, `refund: release ${number_id}`);
+      await removeActiveNumber(number_id, providerName);
     }
 
     return {
@@ -262,7 +261,7 @@ server.tool(
     search: z.string().optional().describe("Search/filter service name"),
   },
   async ({ api_key, country, search }) => {
-    assertAuth(api_key);
+    await assertAuth(api_key);
 
     console.error(`[list_services] providers: ${providers.length}, country: ${country}, search: ${search}`);
 
@@ -326,8 +325,8 @@ server.tool(
     api_key: z.string().describe("Your API key"),
   },
   async ({ api_key }) => {
-    assertAuth(api_key);
-    const balance = getBalance(api_key);
+    await assertAuth(api_key);
+    const balance = await getBalance(api_key);
 
     return {
       content: [
@@ -426,34 +425,34 @@ function createExpressApp() {
   });
 
   // --- GET /get-key ---
-  app.get("/get-key", (req, res) => {
+  app.get("/get-key", async (req, res) => {
     const email = req.query.email as string | undefined;
     if (!email) {
       res.status(400).json({ error: "Missing email" });
       return;
     }
-    const apiKey = getApiKeyByEmail(email.toLowerCase().trim());
+    const apiKey = await getApiKeyByEmail(email.toLowerCase().trim());
     if (!apiKey) {
       res.status(404).json({ error: "No account found for this email" });
       return;
     }
-    const balance = getBalance(apiKey);
+    const balance = await getBalance(apiKey);
     res.json({ api_key: apiKey, balance_usd: balance });
   });
 
   // --- GET /balance ---
-  app.get("/balance", (req, res) => {
+  app.get("/balance", async (req, res) => {
     const apiKey = req.headers["x-api-key"] as string | undefined;
     if (!apiKey) {
       res.status(401).json({ error: "Missing X-API-Key header" });
       return;
     }
-    const { valid } = validateApiKey(apiKey);
+    const { valid } = await validateApiKey(apiKey);
     if (!valid) {
       res.status(401).json({ error: "Invalid API key" });
       return;
     }
-    const balance = getBalance(apiKey);
+    const balance = await getBalance(apiKey);
     res.json({ balance_usd: balance });
   });
 

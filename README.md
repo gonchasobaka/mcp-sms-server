@@ -6,6 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![Railway](https://img.shields.io/badge/hosted-Railway-7c3aed?style=flat-square)](https://railway.app)
 [![License](https://img.shields.io/badge/license-ISC-gray?style=flat-square)](#)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/FeUCmPdd)
 
 ---
 
